@@ -1,34 +1,34 @@
+# Use the latest custom built image from the internal registry for all steps which don't specify an alternative image
+image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
+
+agents:
+  # Must run on a hosted queue
+  queue: "linux-small"
+
 steps:
   - key: create_custom_base_image
     label: ":docker: Create custom base image"
-    agents:
-      queue: linux-arm64-small-default # a dedicated queue using the default base image
+    # Optionally only build on main branch
+    # if: build.branch == "main"
+    if_changed:
+      - ".buildkite/Dockerfile.build"
+      - ".buildkite/pipeline.yml"
+    # Use the image specified in the queue settings for this step
+    image: ~
+    # Build and push a new image to the internal registry
+    # Optionally add --no-cache to rebuild from scratch without using cached layers
     command: |
-      export REGISTRY="$(nsc workspace describe -o json -k registry_url)"
-      export SERVICE="base" # name of the image
-      export DOCKER_REPOSITORY="$${REGISTRY}/$${SERVICE}:latest"
-
       docker buildx build \
-        --no-cache \
         --file .buildkite/Dockerfile.build \
         --build-arg BUILDKITE_BUILD_NUMBER="$$BUILDKITE_BUILD_NUMBER" \
-        --platform linux/amd64,linux/arm64 \
-        --tag "$${DOCKER_REPOSITORY}" \
+        --platform linux/amd64 \
+        --tag "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest" \
         --progress plain \
         --push .
 
-      echo "=== Custom Base Image Created ==="
-      echo "Build #$$BUILDKITE_BUILD_NUMBER"
-      echo "Repository: $${DOCKER_REPOSITORY}"
-      buildkite-agent annotate --style "success" ":rocket: Image pushed to \`$${DOCKER_REPOSITORY}\`"
-
   - key: use_custom_base_image
     label: ":package: Use custom base image"
+    parallelism: 3
     depends_on: create_custom_base_image
-    agents:
-      queue: linux-arm64-small-custom # a dedicated queue using the custom base image with latest tag
     command: |
-      echo "=== Using Custom Base Image ==="
-      echo "Build #$$BUILDKITE_BUILD_NUMBER"
-      echo "Image build number marker:"
-      cat /build-number-marker
+      echo "Using ${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest built from Build #$(cat /build-number-marker)"

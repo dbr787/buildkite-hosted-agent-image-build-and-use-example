@@ -6,41 +6,47 @@ This example shows how to build a custom container image in one pipeline step, a
 
 ## What This Does
 
+The pipeline uses the `image` attribute to automatically use your custom built image for all steps.
+
 **Step 1: Create Custom Base Image**
 
-- Builds a minimal Ubuntu image
-- Includes the current build number in the image
-- Pushes the image to a workspace container registry locally accessible to your agents
-- Shows the registry URL in an annotation
+- Runs on the default queue image (specified by `image: ~`) to avoid recursion
+- Builds a minimal Ubuntu image with the current build number embedded
+- Pushes to `${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest` (your workspace's internal registry)
+- Only rebuilds when `.buildkite/Dockerfile.build` or `.buildkite/pipeline.yml` changes
 
 **Step 2: Use Custom Base Image**
 
-- Runs on a custom queue configured to use your built image
-- Verifies it's using the correct custom image by checking the build number in the image
+- Runs in parallel (3 instances) to demonstrate the custom image works across multiple jobs
+- Automatically uses the custom image via the pipeline-level `image` attribute
+- Verifies it's using the correct custom image by displaying the build number marker
+
+## How It Works
+
+The pipeline sets a default image at the top level:
+
+```yaml
+image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
+```
+
+This means all steps automatically use your custom image unless they specify a different one. The `BUILDKITE_HOSTED_REGISTRY_URL` environment variable is automatically provided by Buildkite and points to your workspace's internal container registry.
 
 ## Files
 
-- `.buildkite/pipeline.yml` - Pipeline with two steps
+- `.buildkite/pipeline.yml` - Pipeline with image attribute and two steps
 - `.buildkite/Dockerfile.build` - Simple Ubuntu base with build number marker
 
 ## Setup Instructions
 
-1. **Create Pipeline**: Connect this repo to a new Buildkite pipeline, use the "Add to Buildkite" button to make this easy.
+**Important**: This example requires Buildkite Hosted Agents. It will not work with self-hosted agents as the `BUILDKITE_HOSTED_REGISTRY_URL` environment variable is only available in hosted environments.
 
-2. **Create Queues**: This configuration assumes two agent queues exist:
+**Note**: The `image` attribute is currently experimental. See the [container image attributes documentation](https://buildkite.com/docs/pipelines/configure/step-types/command-step#container-image-attributes) for more details.
 
-   - `linux-arm64-small-default` - Configured to use the default hosted agent image
-   - `linux-arm64-small-custom` - Will be configured to use your custom built image
+**Warning**: If you build or use a broken image, error messages and logging may be limited. Ensure your Dockerfile builds successfully and the resulting image is valid before relying on it in your pipeline.
 
-3. **First Run**: Run the pipeline - the first step will succeed, but the second step will fail
+1. **Create Pipeline**: Connect this repo to a new Buildkite pipeline using the "Add to Buildkite" button above.
 
-4. **Configure Custom Queue**: After the first build:
-
-   - Look for the annotation: `🚀 Image pushed to registry.example.com/base:latest`
-   - Copy the registry URL (everything between the backticks)
-   - Go to your Buildkite organization → Agents → Cluster → Queues → `linux-arm64-small-custom` (or whatever you named your queue)
-   - Click on the 'Base Image' tab
-   - Paste the registry URL into the **Image URL** field
-   - Click on 'Save settings'
-
-5. **Run Again**: The second step should now work - it will show the custom image build number marker proving it's using your built image
+2. **Run the Pipeline**: That's it! The pipeline will:
+   - Build your custom image using the public base image
+   - Automatically use the built image in subsequent steps
+   - Show the build number marker proving the custom image is in use
