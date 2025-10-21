@@ -6,7 +6,7 @@ This example shows how to build a custom container image in one pipeline step, a
 
 ## What This Does
 
-The pipeline uses the `image` attribute to automatically use your custom built image for all steps.
+The pipeline uses the [`image` attribute](https://buildkite.com/docs/pipelines/configure/step-types/command-step#container-image-attributes) to automatically use your custom built image for all steps.
 
 **Step 1: Create Custom Base Image**
 
