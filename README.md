@@ -6,11 +6,13 @@ This example shows how to build a custom container image in one pipeline step, a
 
 ## What This Does
 
-The pipeline uses the [`image` attribute](https://buildkite.com/docs/pipelines/configure/step-types/command-step#container-image-attributes) to automatically use your custom built image for all steps.
+The pipeline demonstrates how to build a custom Docker image at the start of a pipeline, and then use that image as the execution environment for subsequent steps.
+
+It uses the [`image` attribute](https://buildkite.com/docs/pipelines/configure/step-types/command-step#container-image-attributes) to specify the custom image for the steps that need it. ()
 
 **Step 1: Create Custom Base Image**
 
-- Runs on the default queue image (specified by `image: ~`) to avoid recursion
+- Runs on the default queue image (configured in the queue settings)
 - Builds a minimal Ubuntu image with the current build number embedded
 - Pushes to `${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest` (your workspace's internal registry)
 - Only rebuilds when `.buildkite/Dockerfile.build` or `.buildkite/pipeline.yml` changes
@@ -18,18 +20,20 @@ The pipeline uses the [`image` attribute](https://buildkite.com/docs/pipelines/c
 **Step 2: Use Custom Base Image**
 
 - Runs in parallel (3 instances) to demonstrate the custom image works across multiple jobs
-- Automatically uses the custom image via the pipeline-level `image` attribute
+- Uses the custom image via the step-level `image` attribute
 - Verifies it's using the correct custom image by displaying the build number marker
 
 ## How It Works
 
-The pipeline sets a default image at the top level:
+The pipeline sets the image on the step that needs it:
 
 ```yaml
-image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
+- key: use_custom_base_image
+  image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
+  # ...
 ```
 
-This means all steps automatically use your custom image unless they specify a different one. The `BUILDKITE_HOSTED_REGISTRY_URL` environment variable is automatically provided by Buildkite and points to your workspace's internal container registry.
+This means you can mix standard steps (using the default queue image) and steps using your custom image in the same pipeline. The `BUILDKITE_HOSTED_REGISTRY_URL` environment variable is automatically provided by Buildkite and points to your workspace's internal container registry.
 
 ## Files
 

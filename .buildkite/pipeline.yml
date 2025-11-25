@@ -1,8 +1,5 @@
-# Use the latest custom built image from the internal registry for all steps which don't specify an alternative image
-image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
-
 agents:
-  # Must run on a hosted queue
+  # Must run on a hosted agents queue
   queue: "linux-small"
 
 steps:
@@ -13,8 +10,6 @@ steps:
     if_changed:
       - ".buildkite/Dockerfile.build"
       - ".buildkite/pipeline.yml"
-    # Use the image specified in the queue settings for this step
-    image: ~
     # Build and push a new image to the internal registry
     # Optionally add --no-cache to rebuild from scratch without using cached layers
     command: |
@@ -27,6 +22,8 @@ steps:
         --push .
 
   - key: use_custom_base_image
+    # Use the latest custom built image from the internal registry
+    image: "${BUILDKITE_HOSTED_REGISTRY_URL}/base:latest"
     label: ":package: Use custom base image"
     parallelism: 3
     depends_on: create_custom_base_image
